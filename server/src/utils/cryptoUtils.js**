@@ -1,0 +1,58 @@
+const crypto = require('crypto');
+
+/**
+ * Decrypt password using RSA private key
+ * @param {string} encryptedPassword - Base64 encoded encrypted password
+ * @returns {string} Decrypted password
+ */
+const decryptPassword = (encryptedPassword) => {
+  try {
+    const privateKey = process.env.RSA_PRIVATE_KEY;
+    if (!privateKey) {
+      throw new Error('RSA private key not configured');
+    }
+
+    const buffer = Buffer.from(encryptedPassword, 'base64');
+    const decrypted = crypto.privateDecrypt(
+      {
+        key: privateKey,
+        padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+        oaepHash: 'sha256',
+      },
+      buffer
+    );
+
+    return decrypted.toString('utf8');
+  } catch (error) {
+    console.error('Password decryption failed:', error.message);
+    throw new Error('Failed to decrypt password');
+  }
+};
+
+/**
+ * Generate RSA public key from private key for frontend encryption
+ * @returns {string} PEM formatted public key
+ */
+const getPublicKey = () => {
+  try {
+    const privateKey = process.env.RSA_PRIVATE_KEY;
+    if (!privateKey) {
+      throw new Error('RSA private key not configured');
+    }
+
+    const key = crypto.createPrivateKey(privateKey);
+    const publicKey = key.export({ type: 'pkcs1', format: 'pem' });
+    
+    // Convert to PKCS#8 public key format (more standard for frontend libraries like jsencrypt)
+    const publicKeyObj = crypto.createPublicKey(publicKey);
+    return publicKeyObj.export({ type: 'spki', format: 'pem' });
+  } catch (error) {
+    console.error('Failed to generate public key:', error.message);
+    throw new Error('Failed to generate public key');
+  }
+};
+
+module.exports = {
+  decryptPassword,
+  getPublicKey
+};
