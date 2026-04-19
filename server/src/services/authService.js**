@@ -1,0 +1,97 @@
+const bcrypt = require('bcrypt');
+const { v4: uuidv4 } = require('uuid');
+const User = require('../models/User');
+const { decryptPassword } = require('../utils/cryptoUtils');
+const okxApi = require('../utils/okxApi');
+
+class AuthService {
+  /**
+   * Register a new user and create OKX Agent Wallet
+   * @param {Object} registerData - { email, password (encrypted) }
+   * @returns {Promise<Object>} Registration result
+   */
+  async register(registerData) {
+    const { email, password: encryptedPassword } = registerData;
+
+    // 1. Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error('邮箱格式不正确');
+    }
+
+    // 2. Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      throw new Error('该邮箱已被注册');
+    }
+
+    // 3. Decrypt password
+    let plainPassword;
+    try {
+      plainPassword = decryptPassword(encryptedPassword);
+    } catch (error) {
+      throw new Error('密码解密失败');
+    }
+
+    // 4. Validate password strength (optional, also done on frontend)
+    if (plainPassword.length < 8) {
+      throw new Error('密码长度至少8位');
+    }
+    if (!/[a-zA-Z]/.test(plainPassword) || !/\d/.test(plainPassword)) {
+      throw new Error('密码必须包含字母和数字');
+    }
+
+    // 5. Hash password
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(plainPassword, saltRounds);
+
+    // 6. Generate user ID
+    const userId = `usr_${uuidv4().replace(/-/g, '').substring(0, 16)}`;
+
+    // 7. Create OKX Agent Wallet
+    const walletResult = await okxApi.createAgentWallet({
+      name: `Wallet_${userId}`,
+      userId: userId,
+    });
+
+    if (!walletResult.success) {
+      throw new Error(`创建钱包失败: ${walletResult.error}`);
+    }
+
+    // 8. Get wallet address (assuming creation response includes it, otherwise fetch)
+    let walletAddress = walletResult.data?.address;
+    const okxWalletId = walletResult.data?.walletId;
+
+    if (!walletAddress && okxWalletId) {
+      const addressResult = await okxApi.getWalletAddress(okxWalletId);
+      if (addressResult.success) {
+        walletAddress = addressResult.data?.address;
+      }
+    }
+
+    if (!walletAddress) {
+      throw new Error('无法获取钱包地址');
+    }
+
+    // 9. Create user in database
+    const user = new User({
+      userId,
+      email,
+      passwordHash,
+      walletAddress,
+      okxWalletId,
+    });
+
+    await user.save();
+
+    // 10. Return user data (excluding sensitive fields)
+    return {
+      userId: user.userId,
+      email: user.email,
+      walletAddress: user.walletAddress,
+      createdAt: user.createdAt,
+    };
+  }
+}
+
+module.exports = new AuthService();
