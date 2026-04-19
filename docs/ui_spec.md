@@ -1,148 +1,163 @@
-好的，同事。根据产品经理的PRD，我已完成H Wallet MVP版本的UI/UX设计方案。
-
-## 🎨 设计方案总览
-
-本方案包含两个页面：**注册页面** 和 **注册成功页面**。设计遵循简洁、清晰、易用的原则，确保用户能流畅完成注册流程。
+好的，收到PRD。作为H Wallet的UI/UX设计师，我将基于PRD设计注册流程的界面方案。
 
 ---
 
-### **1. 注册页面 (`/register`)**
+### **H Wallet 注册流程 UI/UX 设计方案**
 
-**页面目标**：引导用户输入邮箱和验证码，完成注册。
-
-#### **组件树结构**
-```
-SafeAreaView (容器)
-├── KeyboardAvoidingView (处理键盘遮挡)
-│   ├── ScrollView (确保内容可滚动)
-│   │   ├── View (内容容器)
-│   │   │   ├── Logo/AppName (品牌标识)
-│   │   │   ├── Text (页面标题)
-│   │   │   ├── FormInput (邮箱输入框)
-│   │   │   │   ├── TextInput
-│   │   │   │   └── Text (错误提示，条件渲染)
-│   │   │   ├── View (验证码输入行)
-│   │   │   │   ├── FormInput (验证码输入框)
-│   │   │   │   │   ├── TextInput
-│   │   │   │   │   └── Text (错误提示，条件渲染)
-│   │   │   │   └── CountdownButton (发送验证码按钮)
-│   │   │   ├── PrimaryButton (注册按钮)
-│   │   │   └── ActivityIndicator (加载指示器，条件渲染)
-│   │   └── View (底部填充，用于键盘弹起)
-```
-
-#### **组件Props定义**
-*   **`FormInput`**:
-    ```typescript
-    interface FormInputProps {
-      label: string;
-      value: string;
-      onChangeText: (text: string) => void;
-      placeholder: string;
-      error?: string; // 错误信息，为空则不显示错误状态
-      keyboardType?: KeyboardTypeOptions; // 如 'email-address', 'numeric'
-      editable?: boolean;
-      secureTextEntry?: boolean;
-    }
-    ```
-*   **`CountdownButton`**:
-    ```typescript
-    interface CountdownButtonProps {
-      onPress: () => void;
-      disabled: boolean; // 根据倒计时或加载状态禁用
-      countdown: number; // 当前倒计时秒数，0表示可点击
-    }
-    ```
-*   **`PrimaryButton`**:
-    ```typescript
-    interface PrimaryButtonProps {
-      title: string;
-      onPress: () => void;
-      disabled?: boolean;
-      loading?: boolean; // 显示加载指示器
-    }
-    ```
+**设计目标**：打造一个简洁、清晰、符合Web3产品调性的注册流程，确保用户能顺畅完成邮箱注册并获取钱包地址。
 
 ---
 
-### **2. 注册成功页面 (`/register/success`)**
+#### **1. 颜色规范 (Color Palette)**
 
-**页面目标**：清晰展示注册成功的结果和生成的钱包地址。
-
-#### **组件树结构**
-```
-SafeAreaView (容器)
-├── ScrollView (内容可滚动)
-│   └── View (内容容器)
-│       ├── SuccessIcon (成功图标，如勾选动画)
-│       ├── Text (成功标题)
-│       ├── Text (成功描述)
-│       ├── WalletAddressCard (钱包地址卡片)
-│       │   ├── Text (卡片标题，如“您的钱包地址”)
-│       │   ├── View (地址显示行)
-│       │   │   ├── Text (钱包地址字符串)
-│       │   │   └── CopyButton (复制按钮)
-│       │   └── Text (提示信息，如“点击复制”)
-│       └── PrimaryButton (完成/返回首页按钮)
-```
-
-#### **组件Props定义**
-*   **`WalletAddressCard`**:
-    ```typescript
-    interface WalletAddressCardProps {
-      address: string; // 完整的钱包地址字符串
-      onCopyPress: () => void; // 复制地址的回调
-    }
-    ```
-*   **`CopyButton`**:
-    ```typescript
-    interface CopyButtonProps {
-      onPress: () => void;
-    }
-    ```
+*   **主色 (Primary)**: `#3B82F6` (用于主要按钮、激活状态)
+*   **辅色 (Secondary)**: `#10B981` (用于成功状态、完成提示)
+*   **背景色 (Background)**:
+    *   页面背景: `#FFFFFF`
+    *   输入框背景: `#F9FAFB`
+    *   卡片/容器背景: `#FFFFFF`
+*   **文字色 (Text)**:
+    *   主要文字: `#111827`
+    *   次要文字/提示文字: `#6B7280`
+    *   占位符文字: `#9CA3AF`
+    *   错误提示: `#EF4444`
+*   **边框色 (Border)**:
+    *   默认边框: `#E5E7EB`
+    *   焦点/激活边框: `#3B82F6`
+    *   错误边框: `#EF4444`
 
 ---
 
-### **3. 设计规范 (Design Tokens)**
+#### **2. 间距规范 (Spacing)**
 
-#### **颜色规范 (Colors)**
-*   **主色 (Primary)**: `#3B82F6` (蓝色，用于主要按钮、激活状态)
-*   **成功色 (Success)**: `#10B981` (绿色，用于成功状态、图标)
-*   **警告/错误色 (Error)**: `#EF4444` (红色，用于错误提示)
-*   **文字主色 (Text Primary)**: `#111827` (深灰色，用于主要标题、正文)
-*   **文字副色 (Text Secondary)**: `#6B7280` (中灰色，用于提示、标签)
-*   **边框色 (Border)**: `#D1D5DB` (浅灰色，用于输入框边框)
-*   **背景色 (Background)**: `#FFFFFF` (白色，页面背景)
-*   **卡片背景色 (Card Background)**: `#F9FAFB` (极浅灰色，用于卡片背景)
-
-#### **间距规范 (Spacing)**
 基于 `8px` 基准单位。
-*   **`xs`**: `4px`
-*   **`sm`**: `8px`
-*   **`md`**: `16px` **(最常用)**
-*   **`lg`**: `24px`
-*   **`xl`**: `32px`
-*   **`xxl`**: `48px`
-*   **页面边距 (Screen Padding)**: `md` (`16px`)
-*   **组件内部间距 (Inner Padding)**: `sm` (`8px`) / `md` (`16px`)
-*   **组件间间距 (Margin between components)**: `lg` (`24px`)
-
-#### **字体规范 (Typography)**
-*   **字族**: 使用系统默认 `Inter` 或 `SF Pro Text`，确保清晰。
-*   **大小与粗细**:
-    *   **大标题 (H1)**: `30px` / `FontWeight.Bold` (700)
-    *   **标题 (H2)**: `24px` / `FontWeight.SemiBold` (600)
-    *   **正文 (Body)**: `16px` / `FontWeight.Normal` (400)
-    *   **标签/按钮文字 (Label/Button)**: `16px` / `FontWeight.Medium` (500)
-    *   **提示文字 (Caption)**: `14px` / `FontWeight.Normal` (400)
-    *   **输入框文字 (Input)**: `16px` / `FontWeight.Normal` (400)
+*   **XS**: `4px`
+*   **S**: `8px`
+*   **M**: `16px`
+*   **L**: `24px`
+*   **XL**: `32px`
+*   **XXL**: `48px`
+*   **页面边距 (Screen Padding)**: `24px`
 
 ---
 
-### **下一步建议与待确认项**
-1.  **动效确认**: 注册成功页面的“成功图标”是否需要特定的Lottie动画？还是使用静态图标？
-2.  **键盘类型**: 验证码输入框是否应使用 `numeric` 键盘并自动聚焦下一个输入？PRD中未明确，建议采用以提升体验。
-3.  **错误状态UI**: 除了文字提示，输入框边框是否应变为红色 (`Error` 色)？本方案已按此设计。
-4.  **加载状态**: 注册按钮的加载指示器，是使用按钮内的 `ActivityIndicator` 还是全屏蒙层？本方案采用按钮内嵌式，体验更轻量。
+#### **3. 字体规范 (Typography)**
 
-**本设计方案已包含所有视觉与交互细节，可直接用于开发。**
+*   **字族**: 使用系统默认 `Inter` 或 `SF Pro Text` (iOS) / `Roboto` (Android)，在 `StyleSheet` 中定义为 `fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto'`。
+*   **标题 (H1)**: `fontSize: 32px`, `fontWeight: '700'`
+*   **标题 (H2)**: `fontSize: 24px`, `fontWeight: '600'`
+*   **正文 (Body)**: `fontSize: 16px`, `fontWeight: '400'`
+*   **标签/按钮文字 (Label/Button)**: `fontSize: 16px`, `fontWeight: '500'`
+*   **提示文字 (Caption)**: `fontSize: 14px`, `fontWeight: '400'`
+*   **小标签 (Micro)**: `fontSize: 12px`, `fontWeight: '400'`
+
+---
+
+#### **4. 页面一：注册页面 (`/register`) 组件树与 Props**
+
+**组件树**:
+```
+RegisterScreen (View)
+├── SafeAreaView (确保内容在安全区内)
+├── ScrollView (可滚动容器)
+│   ├── View (内容容器)
+│   │   ├── Logo/AppName (Text) - 可选
+│   │   ├── Title (Text) - “创建 H Wallet 账户”
+│   │   ├── EmailInput (自定义组件)
+│   │   │   ├── InputLabel (Text) - “邮箱地址”
+│   │   │   ├── TextInput
+│   │   │   └── ErrorText (Text) - 邮箱验证错误信息
+│   │   ├── PasswordInput (自定义组件)
+│   │   │   ├── InputLabel (Text) - “密码”
+│   │   │   ├── TextInput (secureTextEntry)
+│   │   │   ├── ToggleVisibilityIcon (TouchableOpacity + Icon)
+│   │   │   └── ErrorText (Text) - 密码验证错误信息
+│   │   ├── ConfirmPasswordInput (自定义组件) - 结构与PasswordInput相同
+│   │   ├── TermsCheckbox (自定义组件)
+│   │   │   ├── TouchableOpacity
+│   │   │   │   ├── CheckboxIcon (View/自定义图标)
+│   │   │   │   └── TermsText (Text) - 包含可点击的“服务条款”
+│   │   │   └── ErrorText (Text) - 未勾选错误信息
+│   │   ├── RegisterButton (自定义组件)
+│   │   │   └── TouchableOpacity
+│   │   │       ├── ActivityIndicator (加载时显示)
+│   │   │       └── ButtonText (Text) - “注册” / “注册中...”
+│   │   └── LoginLink (TouchableOpacity)
+│   │       └── LinkText (Text) - “已有账户？去登录”
+│   └── KeyboardAvoidingView (可选，用于处理键盘遮挡)
+```
+
+**关键自定义组件 Props**:
+*   `EmailInput`:
+    *   `value: string`
+    *   `onChangeText: (text: string) => void`
+    *   `error: string | null`
+    *   `editable: boolean` (用于加载状态)
+*   `PasswordInput` / `ConfirmPasswordInput` (继承自 `BaseTextInput`):
+    *   `value: string`
+    *   `onChangeText: (text: string) => void`
+    *   `error: string | null`
+    *   `editable: boolean`
+    *   `label: string`
+    *   `isPassword: boolean` (内部使用)
+    *   `showPassword: boolean` (内部状态)
+    *   `onToggleVisibility: () => void` (内部方法)
+*   `TermsCheckbox`:
+    *   `isChecked: boolean`
+    *   `onToggle: () => void`
+    *   `error: string | null`
+*   `RegisterButton`:
+    *   `onPress: () => void`
+    *   `isLoading: boolean`
+    *   `disabled: boolean` (通常由 `isLoading` 或表单验证状态控制)
+
+---
+
+#### **5. 页面二：注册成功页 (`/register/success`) 组件树与 Props**
+
+**组件树**:
+```
+RegistrationSuccessScreen (View)
+├── SafeAreaView
+├── ScrollView
+│   └── View (内容容器，使用 `alignItems: 'center', justifyContent: 'center', flex: 1`)
+│       ├── SuccessLottie (LottieView) - 播放成功动画
+│       ├── Title (Text) - “欢迎加入 H Wallet！”
+│       ├── Message (Text) - “您的专属钱包已创建成功”
+│       ├── WalletAddressCard (View)
+│       │   ├── AddressLabel (Text) - “您的钱包地址”
+│       │   ├── AddressText (Text) - 显示 `walletAddress`
+│       │   └── CopyButton (TouchableOpacity)
+│       │       ├── CopyIcon (Icon)
+│       │       └── CopyButtonText (Text) - “复制”
+│       └── GoToWalletButton (TouchableOpacity)
+│           └── ButtonText (Text) - “进入钱包”
+```
+
+**关键自定义组件 Props**:
+*   `WalletAddressCard`:
+    *   `walletAddress: string`
+    *   `onCopyPress: () => void` (复制地址到剪贴板)
+*   `GoToWalletButton`:
+    *   `onPress: () => void` (导航到 `/home`)
+
+---
+
+#### **6. 交互与状态说明**
+
+1.  **表单验证**:
+    *   **实时验证**: 每个字段 `onChangeText` 时触发验证，错误信息显示在对应输入框下方 (`ErrorText`)，输入框边框变红。
+    *   **提交验证**: 点击注册按钮时，再次验证全部字段。如有错误，滚动到第一个错误字段位置并显示提示。
+2.  **加载状态**:
+    *   注册 API 调用期间，`RegisterButton` 显示 `ActivityIndicator`，文字变为“注册中...”，且按钮和所有输入框 `editable` 为 `false`。
+3.  **成功跳转**:
+    *   注册成功后，导航到成功页，并可通过 `route.params` 传递 `walletAddress` 进行展示。
+4.  **错误提示**:
+    *   网络或API错误，使用全局 `Toast` 或页面顶部的 `Banner` 组件进行提示（例如，一个红色的 `View` 从顶部滑入），提示文案使用后端返回的 `error` 字段。
+
+---
+
+**下一步建议**：
+1.  **待确认**：成功页的 Lottie 动画资源文件。
+2.  **待确认**：图标资源（眼睛开/闭、复制、勾选）是使用图标库（如 `@expo/vector-icons`）还是自定义 SVG。
+3.  **建议**：为输入框添加 `onFocus` / `onBlur` 样式变化（边框颜色），提升交互反馈。
