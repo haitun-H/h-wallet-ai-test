@@ -1,16 +1,1 @@
-src/
-├── screens/
-│   └── HomeScreen.tsx          # 首页主组件
-├── components/
-│   ├── BalanceCard.tsx         # 余额卡片
-│   ├── TransactionList.tsx     # 交易记录列表
-│   └── TransferModal.tsx       # 转账弹窗
-├── store/
-│   └── useWalletStore.ts       # Zustand状态管理
-├── types/
-│   └── index.ts                # TypeScript类型定义
-├── utils/
-│   ├── format.ts               # 格式化函数
-│   └── api.ts                  # API调用封装
-└── navigation/
-    └── AppNavigator.tsx        # 导航配置
+用户输入邮箱 → 前端请求发送验证码 → 用户输入验证码 → 前端验证 → 后端调用OKX API创建钱包 → 返回钱包地址至前端 → 页面展示成功信息及地址
