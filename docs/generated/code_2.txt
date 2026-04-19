@@ -1,0 +1,18 @@
+路径：https://api.okx.com/onchainos/v1/agent-wallets
+方法：POST
+Headers：
+{
+  "Authorization": "Bearer {api_key}",
+  "Content-Type": "application/json"
+}
+参数：
+{
+  "label": "string" // 钱包标签，使用用户邮箱
+}
+返回值：
+{
+  "id": "string",           // 钱包ID
+  "address": "string",      // 钱包地址
+  "label": "string",        // 钱包标签
+  "created_at": "timestamp" // 创建时间
+}
