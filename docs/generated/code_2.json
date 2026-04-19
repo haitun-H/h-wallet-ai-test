@@ -1,4 +1,1 @@
-{
-      "success": false,
-      "error": "错误描述，如：邮箱格式错误、发送频率过高"
-    }
+{ "success": false, "error": "邮箱格式不正确" }
