@@ -1,0 +1,117 @@
+const axios = require('axios');
+const crypto = require('crypto');
+
+class OKXApi {
+  constructor() {
+    this.baseURL = process.env.OKX_API_BASE_URL || 'https://www.okx.com';
+    this.apiKey = process.env.OKX_API_KEY;
+    this.apiSecret = process.env.OKX_API_SECRET;
+    this.passphrase = process.env.OKX_API_PASSPHRASE;
+
+    if (!this.apiKey || !this.apiSecret || !this.passphrase) {
+      throw new Error('OKX API credentials are not configured');
+    }
+
+    this.client = axios.create({
+      baseURL: this.baseURL,
+      headers: {
+        'Content-Type': 'application/json',
+        'OK-ACCESS-KEY': this.apiKey,
+        'OK-ACCESS-PASSPHRASE': this.passphrase,
+      },
+    });
+
+    // Add request interceptor for signing
+    this.client.interceptors.request.use((config) => {
+      const timestamp = new Date().toISOString();
+      const method = config.method?.toUpperCase() || 'GET';
+      const requestPath = config.url;
+      let body = '';
+
+      if (config.data && method === 'POST') {
+        body = JSON.stringify(config.data);
+      }
+
+      const message = timestamp + method + requestPath + body;
+      const signature = crypto
+        .createHmac('sha256', this.apiSecret)
+        .update(message)
+        .digest('base64');
+
+      config.headers['OK-ACCESS-TIMESTAMP'] = timestamp;
+      config.headers['OK-ACCESS-SIGN'] = signature;
+
+      return config;
+    });
+  }
+
+  /**
+   * Create an Agent Wallet
+   * @param {Object} params - Wallet creation parameters
+   * @param {string} params.name - Wallet name (can use userId or email)
+   * @param {string} params.userId - Our internal user ID for reference
+   * @returns {Promise<Object>} Wallet creation response
+   */
+  async createAgentWallet(params) {
+    try {
+      // Note: The exact endpoint and parameters need to be verified with OKX documentation
+      // This is based on typical REST API patterns for wallet creation
+      const response = await this.client.post('/api/v5/waas/agent-wallet/create', {
+        name: params.name,
+        externalUserId: params.userId, // Link to our internal user
+        // Add other required parameters as per OKX documentation
+      });
+
+      if (response.data.code === '0') {
+        return {
+          success: true,
+          data: response.data.data[0], // Assuming response structure
+        };
+      } else {
+        return {
+          success: false,
+          error: response.data.msg || 'Failed to create wallet',
+        };
+      }
+    } catch (error) {
+      console.error('OKX API Error:', error.response?.data || error.message);
+      return {
+        success: false,
+        error: error.response?.data?.msg || error.message || 'OKX API request failed',
+      };
+    }
+  }
+
+  /**
+   * Get wallet address for a created wallet
+   * @param {string} walletId - Wallet ID from createAgentWallet response
+   * @returns {Promise<Object>} Wallet address response
+   */
+  async getWalletAddress(walletId) {
+    try {
+      // This endpoint might be different or included in the creation response
+      // Adjust based on actual OKX API documentation
+      const response = await this.client.get(`/api/v5/waas/agent-wallet/${walletId}/address`);
+
+      if (response.data.code === '0') {
+        return {
+          success: true,
+          data: response.data.data[0],
+        };
+      } else {
+        return {
+          success: false,
+          error: response.data.msg || 'Failed to get wallet address',
+        };
+      }
+    } catch (error) {
+      console.error('OKX API Error:', error.response?.data || error.message);
+      return {
+        success: false,
+        error: error.response?.data?.msg || error.message || 'OKX API request failed',
+      };
+    }
+  }
+}
+
+module.exports = new OKXApi();
