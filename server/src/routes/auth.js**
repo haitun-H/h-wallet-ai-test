@@ -1,0 +1,80 @@
+const express = require('express');
+const router = express.Router();
+const authService = require('../services/authService');
+const { getPublicKey } = require('../utils/cryptoUtils');
+const { asyncHandler } = require('../middleware/errorHandler');
+
+/**
+ * @route GET /api/v1/auth/public-key
+ * @description Get RSA public key for frontend password encryption
+ */
+router.get(
+  '/public-key',
+  asyncHandler(async (req, res) => {
+    try {
+      const publicKey = getPublicKey();
+      res.status(200).json({
+        success: true,
+        data: {
+          publicKey,
+        },
+        message: 'Public key retrieved successfully',
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve public key',
+      });
+    }
+  })
+);
+
+/**
+ * @route POST /api/v1/auth/register
+ * @description Register a new user and create OKX Agent Wallet
+ */
+router.post(
+  '/register',
+  asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+
+    // Basic validation
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: '邮箱和密码不能为空',
+      });
+    }
+
+    try {
+      const userData = await authService.register({ email, password });
+
+      res.status(200).json({
+        success: true,
+        data: userData,
+        message: '注册成功',
+      });
+    } catch (error) {
+      // Handle specific error messages
+      const errorMessage = error.message;
+      let statusCode = 500;
+
+      if (errorMessage.includes('邮箱格式') || errorMessage.includes('密码长度') || errorMessage.includes('密码必须包含')) {
+        statusCode = 400;
+      } else if (errorMessage.includes('已被注册')) {
+        statusCode = 409;
+      } else if (errorMessage.includes('创建钱包失败') || errorMessage.includes('无法获取钱包地址')) {
+        statusCode = 500;
+        // Log detailed error for internal tracking
+        console.error('Wallet creation error:', errorMessage);
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        error: errorMessage,
+      });
+    }
+  })
+);
+
+module.exports = router;
