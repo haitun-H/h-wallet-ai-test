@@ -1,0 +1,71 @@
+import React from 'react';
+import {
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+} from 'react-native';
+
+interface ButtonProps {
+  title: string;
+  onPress: () => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+  variant?: 'primary' | 'secondary';
+  style?: ViewStyle;
+  textStyle?: TextStyle;
+}
+
+const Button: React.FC<ButtonProps> = ({
+  title,
+  onPress,
+  isLoading = false,
+  disabled = false,
+  variant = 'primary',
+  style,
+  textStyle,
+}) => {
+  const isDisabled = disabled || isLoading;
+
+  const getBackgroundColor = () => {
+    if (isDisabled) return '#9CA3AF';
+    return variant === 'primary' ? '#3B82F6' : '#10B981';
+  };
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.button,
+        { backgroundColor: getBackgroundColor() },
+        style,
+      ]}
+      onPress={onPress}
+      disabled={isDisabled}
+      activeOpacity={0.8}
+    >
+      {isLoading ? (
+        <ActivityIndicator size="small" color="#FFFFFF" />
+      ) : (
+        <Text style={[styles.buttonText, textStyle]}>{title}</Text>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  button: {
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+});
+
+export default Button;
