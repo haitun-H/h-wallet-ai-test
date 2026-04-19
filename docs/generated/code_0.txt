@@ -1,14 +1,17 @@
-路径：/api/auth/send-verification
-方法：POST
-参数：
-{
-  "email": "string" // 必填，用户邮箱
-}
-返回值：
-{
-  "success": boolean,
-  "message": "string",
-  "data": {
-    "expiresAt": "timestamp" // 验证码过期时间
-  }
-}
+SafeAreaView (容器)
+├── KeyboardAvoidingView (处理键盘遮挡)
+│   ├── ScrollView (确保内容可滚动)
+│   │   ├── View (内容容器)
+│   │   │   ├── Logo/AppName (品牌标识)
+│   │   │   ├── Text (页面标题)
+│   │   │   ├── FormInput (邮箱输入框)
+│   │   │   │   ├── TextInput
+│   │   │   │   └── Text (错误提示，条件渲染)
+│   │   │   ├── View (验证码输入行)
+│   │   │   │   ├── FormInput (验证码输入框)
+│   │   │   │   │   ├── TextInput
+│   │   │   │   │   └── Text (错误提示，条件渲染)
+│   │   │   │   └── CountdownButton (发送验证码按钮)
+│   │   │   ├── PrimaryButton (注册按钮)
+│   │   │   └── ActivityIndicator (加载指示器，条件渲染)
+│   │   └── View (底部填充，用于键盘弹起)
