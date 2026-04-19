@@ -1,0 +1,3 @@
+interface CopyButtonProps {
+      onPress: () => void;
+    }
