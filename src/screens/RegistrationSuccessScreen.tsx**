@@ -1,0 +1,155 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Clipboard from 'expo-clipboard';
+import { Ionicons } from '@expo/vector-icons';
+import Button from '../components/Button';
+
+type RootStackParamList = {
+  RegisterSuccess: { walletAddress: string };
+  Home: undefined;
+};
+
+type RegistrationSuccessScreenRouteProp = RouteProp<RootStackParamList, 'RegisterSuccess'>;
+type RegistrationSuccessScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
+
+const RegistrationSuccessScreen: React.FC = () => {
+  const route = useRoute<RegistrationSuccessScreenRouteProp>();
+  const navigation = useNavigation<RegistrationSuccessScreenNavigationProp>();
+  const { walletAddress } = route.params;
+
+  const handleCopyAddress = async () => {
+    await Clipboard.setStringAsync(walletAddress);
+    Alert.alert('已复制', '钱包地址已复制到剪贴板。');
+  };
+
+  const handleGoToWallet = () => {
+    // TODO: 实现跳转到主页
+    navigation.navigate('Home');
+    console.log('Navigate to Home');
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          {/* Success Animation Placeholder */}
+          <View style={styles.animationPlaceholder}>
+            <Ionicons name="checkmark-circle" size={120} color="#10B981" />
+            {/* TODO: 替换为 Lottie 动画 */}
+            {/* <LottieView source={require('../assets/success.json')} autoPlay loop={false} /> */}
+          </View>
+
+          <Text style={styles.title}>欢迎加入 H Wallet！</Text>
+          <Text style={styles.message}>您的专属钱包已创建成功</Text>
+
+          <View style={styles.walletCard}>
+            <Text style={styles.walletLabel}>您的钱包地址</Text>
+            <Text style={styles.walletAddress} numberOfLines={1} ellipsizeMode="middle">
+              {walletAddress}
+            </Text>
+            <TouchableOpacity style={styles.copyButton} onPress={handleCopyAddress}>
+              <Ionicons name="copy-outline" size={18} color="#3B82F6" />
+              <Text style={styles.copyButtonText}>复制</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Button
+            title="进入钱包"
+            onPress={handleGoToWallet}
+            variant="secondary"
+            style={styles.actionButton}
+          />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  content: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 48,
+  },
+  animationPlaceholder: {
+    marginBottom: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  message: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginBottom: 32,
+    textAlign: 'center',
+  },
+  walletCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 32,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  walletLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  walletAddress: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  copyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#EFF6FF',
+  },
+  copyButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#3B82F6',
+    marginLeft: 4,
+  },
+  actionButton: {
+    width: '100%',
+  },
+});
+
+export default RegistrationSuccessScreen;
