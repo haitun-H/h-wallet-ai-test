@@ -1,0 +1,16 @@
+src/
+├── screens/
+│   └── HomeScreen.tsx          # 首页主组件
+├── components/
+│   ├── BalanceCard.tsx         # 余额卡片
+│   ├── TransactionList.tsx     # 交易记录列表
+│   └── TransferModal.tsx       # 转账弹窗
+├── store/
+│   └── useWalletStore.ts       # Zustand状态管理
+├── types/
+│   └── index.ts                # TypeScript类型定义
+├── utils/
+│   ├── format.ts               # 格式化函数
+│   └── api.ts                  # API调用封装
+└── navigation/
+    └── AppNavigator.tsx        # 导航配置
