@@ -1,11 +1,6 @@
 import React from 'react';
-import {
-  TouchableOpacity,
-  Text,
-  ActivityIndicator,
-  StyleSheet,
-  ViewStyle,
-} from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle } from 'react-native';
+import { colors, spacing, typography } from '../theme';
 
 interface PrimaryButtonProps {
   title: string;
@@ -22,21 +17,19 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   loading = false,
   style,
 }) => {
+  const backgroundColor = disabled ? colors.border : colors.primary;
+
   return (
     <TouchableOpacity
-      style={[
-        styles.button,
-        disabled && styles.buttonDisabled,
-        style,
-      ]}
+      style={[styles.button, { backgroundColor }, style]}
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator size="small" color="#FFFFFF" />
+        <ActivityIndicator color={colors.background} />
       ) : (
-        <Text style={styles.buttonText}>{title}</Text>
+        <Text style={styles.text}>{title}</Text>
       )}
     </TouchableOpacity>
   );
@@ -44,20 +37,14 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: '#3B82F6',
+    paddingVertical: spacing.md,
     borderRadius: 8,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  buttonDisabled: {
-    backgroundColor: '#9CA3AF',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+  text: {
+    ...typography.label,
+    color: colors.background,
   },
 });
 
