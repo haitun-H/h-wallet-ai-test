@@ -1,17 +1,15 @@
-路径：/api/auth/register
-方法：POST
-参数：
-{
-  "email": "string", // 必填，用户邮箱
-  "code": "string"   // 必填，6位验证码
-}
-返回值：
-{
-  "success": boolean,
-  "message": "string",
-  "data": {
-    "walletAddress": "string", // 创建的钱包地址
-    "userId": "string",        // 用户ID
-    "createdAt": "timestamp"   // 创建时间
-  }
-}
+RegistrationSuccessScreen (View)
+├── SafeAreaView
+├── ScrollView
+│   └── View (内容容器，使用 `alignItems: 'center', justifyContent: 'center', flex: 1`)
+│       ├── SuccessLottie (LottieView) - 播放成功动画
+│       ├── Title (Text) - “欢迎加入 H Wallet！”
+│       ├── Message (Text) - “您的专属钱包已创建成功”
+│       ├── WalletAddressCard (View)
+│       │   ├── AddressLabel (Text) - “您的钱包地址”
+│       │   ├── AddressText (Text) - 显示 `walletAddress`
+│       │   └── CopyButton (TouchableOpacity)
+│       │       ├── CopyIcon (Icon)
+│       │       └── CopyButtonText (Text) - “复制”
+│       └── GoToWalletButton (TouchableOpacity)
+│           └── ButtonText (Text) - “进入钱包”
