@@ -1,0 +1,17 @@
+路径：/api/auth/register
+方法：POST
+参数：
+{
+  "email": "string", // 必填，用户邮箱
+  "code": "string"   // 必填，6位验证码
+}
+返回值：
+{
+  "success": boolean,
+  "message": "string",
+  "data": {
+    "walletAddress": "string", // 创建的钱包地址
+    "userId": "string",        // 用户ID
+    "createdAt": "timestamp"   // 创建时间
+  }
+}
