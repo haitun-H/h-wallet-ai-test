@@ -1,22 +1,14 @@
-RegisterScreen (页面容器)
-├── SafeAreaView (安全区域)
-│   ├── ScrollView (可滚动区域，适配键盘弹出)
-│   │   ├── View (内容容器)
-│   │   │   ├── Logo (应用Logo)
-│   │   │   ├── Text (标题：“创建你的链上钱包”)
-│   │   │   ├── Text (副标题：“仅需邮箱，快速开始”)
-│   │   │   ├── FormSection (表单区域)
-│   │   │   │   ├── InputField (邮箱输入框)
-│   │   │   │   │   ├── TextInput
-│   │   │   │   │   └── Text (错误提示，条件渲染)
-│   │   │   │   ├── InputFieldWithButton (验证码输入框+发送按钮)
-│   │   │   │   │   ├── TextInput
-│   │   │   │   │   ├── Button (发送验证码/倒计时)
-│   │   │   │   │   └── Text (错误提示，条件渲染)
-│   │   │   │   └── PrimaryButton (主按钮：“发送验证码”/“注册”/“处理中...”)
-│   │   │   ├── StatusCard (状态卡片，条件渲染)
-│   │   │   │   ├── ActivityIndicator (加载动画)
-│   │   │   │   ├── Text (成功/错误信息)
-│   │   │   │   ├── Text (钱包地址)
-│   │   │   │   └── Button (复制地址按钮)
-│   │   │   └── Text (服务条款提示)
+路径：/api/auth/send-verification
+方法：POST
+参数：
+{
+  "email": "string" // 必填，用户邮箱
+}
+返回值：
+{
+  "success": boolean,
+  "message": "string",
+  "data": {
+    "expiresAt": "timestamp" // 验证码过期时间
+  }
+}
