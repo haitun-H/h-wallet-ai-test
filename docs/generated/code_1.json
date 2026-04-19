@@ -1,4 +1,10 @@
 {
       "success": true,
-      "message": "验证码已发送"
+      "data": {
+        "userId": "string, 系统生成的用户唯一ID",
+        "email": "string, 用户邮箱",
+        "walletAddress": "string, OKX OnchainOS 返回的 Agent Wallet 地址",
+        "createdAt": "string, ISO 8601 格式的创建时间"
+      },
+      "message": "注册成功"
     }
