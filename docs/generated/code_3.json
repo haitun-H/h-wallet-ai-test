@@ -1,4 +1,1 @@
-{
-      "email": "user@example.com",
-      "code": "123456"
-    }
+{ "success": false, "error": "该邮箱已被注册" }
