@@ -1,37 +1,107 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useReducer, useEffect } from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
-  KeyboardAvoidingView,
+  SafeAreaView,
   ScrollView,
+  KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, spacing, typography } from '../theme';
-import FormInput from '../components/FormInput';
-import CountdownButton from '../components/CountdownButton';
-import PrimaryButton from '../components/PrimaryButton';
-import { authService } from '../services/authService';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import InputField from '../components/common/InputField';
+import PrimaryButton from '../components/common/PrimaryButton';
+import { authService, RegisterRequest } from '../services/authService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-type RegisterScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Register'>;
+// 表单状态类型
+interface FormState {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  verificationCode: string;
+  isAgreed: boolean;
+}
+
+// 表单动作类型
+type FormAction =
+  | { type: 'SET_EMAIL'; payload: string }
+  | { type: 'SET_PASSWORD'; payload: string }
+  | { type: 'SET_CONFIRM_PASSWORD'; payload: string }
+  | { type: 'SET_VERIFICATION_CODE'; payload: string }
+  | { type: 'TOGGLE_AGREEMENT' }
+  | { type: 'RESET' };
+
+// 表单Reducer
+const formReducer = (state: FormState, action: FormAction): FormState => {
+  switch (action.type) {
+    case 'SET_EMAIL':
+      return { ...state, email: action.payload };
+    case 'SET_PASSWORD':
+      return { ...state, password: action.payload };
+    case 'SET_CONFIRM_PASSWORD':
+      return { ...state, confirmPassword: action.payload };
+    case 'SET_VERIFICATION_CODE':
+      return { ...state, verificationCode: action.payload };
+    case 'TOGGLE_AGREEMENT':
+      return { ...state, isAgreed: !state.isAgreed };
+    case 'RESET':
+      return initialState;
+    default:
+      return state;
+  }
+};
+
+const initialState: FormState = {
+  email: '',
+  password: '',
+  confirmPassword: '',
+  verificationCode: '',
+  isAgreed: false,
+};
+
+// 验证函数
+const validateEmail = (email: string): string => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email) return '邮箱不能为空';
+  if (!emailRegex.test(email)) return '邮箱格式不正确';
+  return '';
+};
+
+const validatePassword = (password: string): string => {
+  if (!password) return '密码不能为空';
+  if (password.length < 8) return '密码至少8位';
+  if (!/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
+    return '密码需包含字母和数字';
+  }
+  return '';
+};
+
+const validateConfirmPassword = (password: string, confirmPassword: string): string => {
+  if (!confirmPassword) return '请确认密码';
+  if (password !== confirmPassword) return '两次输入的密码不一致';
+  return '';
+};
+
+const validateVerificationCode = (code: string): string => {
+  if (!code) return '验证码不能为空';
+  if (!/^\d{6}$/.test(code)) return '验证码为6位数字';
+  return '';
+};
 
 const RegisterScreen: React.FC = () => {
-  const navigation = useNavigation<RegisterScreenNavigationProp>();
-
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const router = useRouter();
+  const [formState, dispatch] = useReducer(formReducer, initialState);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [isLoadingSend, setIsLoadingSend] = useState(false);
-  const [isLoadingRegister, setIsLoadingRegister] = useState(false);
-  const [emailError, setEmailError] = useState('');
-  const [codeError, setCodeError] = useState('');
+  const [sid, setSid] = useState<string>('');
 
-  // 倒计时效果
+  // 验证码倒计时效果
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (countdown > 0) {
@@ -40,137 +110,241 @@ const RegisterScreen: React.FC = () => {
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  const validateEmail = (): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      setEmailError('请输入邮箱地址');
-      return false;
-    }
-    if (!emailRegex.test(email)) {
-      setEmailError('邮箱格式不正确');
-      return false;
-    }
-    setEmailError('');
-    return true;
-  };
+  // 实时验证邮箱和密码
+  useEffect(() => {
+    const emailError = validateEmail(formState.email);
+    const passwordError = validatePassword(formState.password);
+    const confirmError = validateConfirmPassword(formState.password, formState.confirmPassword);
+    setErrors((prev) => ({
+      ...prev,
+      email: emailError,
+      password: passwordError,
+      confirmPassword: confirmError,
+    }));
+  }, [formState.email, formState.password, formState.confirmPassword]);
 
+  // 处理获取验证码
   const handleSendCode = async () => {
-    if (!validateEmail()) return;
+    const emailError = validateEmail(formState.email);
+    if (emailError) {
+      setErrors((prev) => ({ ...prev, email: emailError }));
+      return;
+    }
 
-    setIsLoadingSend(true);
+    setIsSendingCode(true);
     try {
-      const response = await authService.sendVerificationCode(email);
-      if (response.success) {
-        Alert.alert('成功', '验证码已发送至您的邮箱，请查收。');
-        setCountdown(60); // 开始60秒倒计时
-      } else {
-        Alert.alert('发送失败', response.message || '请稍后重试');
-      }
+      const response = await authService.sendVerificationCode(formState.email);
+      setSid(response.data.sid);
+      setCountdown(60); // 开始60秒倒计时
+      Alert.alert('成功', '验证码已发送到您的邮箱，请查收。');
     } catch (error: any) {
-      console.error('Send code error:', error);
-      Alert.alert('错误', error.message || '网络请求失败，请检查网络连接');
+      Alert.alert('发送失败', error.message || '请稍后重试');
     } finally {
-      setIsLoadingSend(false);
+      setIsSendingCode(false);
     }
   };
 
+  // 处理注册提交
   const handleRegister = async () => {
-    // 前端基础验证
-    if (!validateEmail()) return;
-    if (!code) {
-      setCodeError('请输入验证码');
-      return;
-    }
-    if (code.length !== 6) {
-      setCodeError('验证码为6位数字');
-      return;
-    }
-    setCodeError('');
+    // 客户端验证
+    const emailError = validateEmail(formState.email);
+    const passwordError = validatePassword(formState.password);
+    const confirmError = validateConfirmPassword(formState.password, formState.confirmPassword);
+    const codeError = validateVerificationCode(formState.verificationCode);
 
-    setIsLoadingRegister(true);
+    const newErrors = {
+      email: emailError,
+      password: passwordError,
+      confirmPassword: confirmError,
+      verificationCode: codeError,
+    };
+    setErrors(newErrors);
+
+    // 检查是否有错误或未同意协议
+    const hasError = Object.values(newErrors).some((error) => error !== '');
+    if (hasError) {
+      Alert.alert('提示', '请检查表单中的错误信息。');
+      return;
+    }
+    if (!formState.isAgreed) {
+      Alert.alert('提示', '请阅读并同意服务协议。');
+      return;
+    }
+    if (!sid) {
+      Alert.alert('提示', '请先获取验证码。');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      const response = await authService.register(email, code);
-      if (response.success) {
-        // 注册成功，跳转到成功页面并传递钱包地址
-        navigation.replace('RegisterSuccess', {
-          walletAddress: response.data.walletAddress,
-        });
-      } else {
-        Alert.alert('注册失败', response.message || '验证码错误或已过期');
-      }
+      const registerData: RegisterRequest = {
+        email: formState.email,
+        password: formState.password, // 重要：实际项目中这里必须进行哈希处理！
+        verificationCode: formState.verificationCode,
+        sid,
+      };
+
+      const response = await authService.register(registerData);
+
+      // 保存token和用户信息
+      await AsyncStorage.setItem('userToken', response.data.token);
+      await AsyncStorage.setItem('userInfo', JSON.stringify({
+        userId: response.data.userId,
+        email: formState.email,
+        nickname: response.data.nickname,
+        walletAddress: response.data.walletAddress,
+      }));
+
+      Alert.alert('注册成功', `您的钱包地址：${response.data.walletAddress}`, [
+        {
+          text: '进入钱包',
+          onPress: () => {
+            // 跳转到欢迎页或主页
+            router.replace('/welcome');
+          },
+        },
+      ]);
+      dispatch({ type: 'RESET' });
     } catch (error: any) {
-      console.error('Register error:', error);
-      Alert.alert('错误', error.message || '注册失败，请稍后重试');
+      Alert.alert('注册失败', error.message);
     } finally {
-      setIsLoadingRegister(false);
+      setIsLoading(false);
     }
   };
+
+  // 计算注册按钮是否禁用
+  const isRegisterDisabled =
+    !formState.email ||
+    !formState.password ||
+    !formState.confirmPassword ||
+    !formState.verificationCode ||
+    !formState.isAgreed ||
+    Object.values(errors).some((error) => error !== '') ||
+    isLoading;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        style={styles.keyboardView}
+        style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.content}>
-            {/* Logo/AppName 占位 */}
-            <View style={styles.logoPlaceholder}>
-              <Text style={styles.logoText}>H Wallet</Text>
-            </View>
+          {/* Logo与标题区域 */}
+          <View style={styles.header}>
+            <Ionicons name="wallet" size={64} color="#3B82F6" />
+            <Text style={styles.title}>创建 H Wallet 账户</Text>
+            <Text style={styles.subtitle}>开启您的数字资产管理之旅</Text>
+          </View>
 
-            <Text style={styles.title}>创建您的钱包</Text>
-
-            <FormInput
-              label="邮箱地址"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (emailError) setEmailError('');
-              }}
+          {/* 表单区域 */}
+          <View style={styles.form}>
+            <InputField
+              label="邮箱"
               placeholder="请输入您的邮箱"
-              error={emailError}
+              value={formState.email}
+              onChangeText={(text) => dispatch({ type: 'SET_EMAIL', payload: text })}
+              error={errors.email}
+              leftIconName="mail-outline"
               keyboardType="email-address"
-              editable={!isLoadingRegister}
+              autoCapitalize="none"
+              editable={!isLoading}
+            />
+
+            <InputField
+              label="密码"
+              placeholder="至少8位，包含字母和数字"
+              value={formState.password}
+              onChangeText={(text) => dispatch({ type: 'SET_PASSWORD', payload: text })}
+              error={errors.password}
+              leftIconName="lock-closed-outline"
+              secureTextEntry
+              editable={!isLoading}
+            />
+
+            <InputField
+              label="确认密码"
+              placeholder="请再次输入密码"
+              value={formState.confirmPassword}
+              onChangeText={(text) => dispatch({ type: 'SET_CONFIRM_PASSWORD', payload: text })}
+              error={errors.confirmPassword}
+              leftIconName="lock-closed-outline"
+              secureTextEntry
+              editable={!isLoading}
             />
 
             <View style={styles.codeRow}>
-              <View style={styles.codeInputContainer}>
-                <FormInput
+              <View style={styles.codeInput}>
+                <InputField
                   label="验证码"
-                  value={code}
-                  onChangeText={(text) => {
-                    setCode(text);
-                    if (codeError) setCodeError('');
-                  }}
-                  placeholder="6位数字"
-                  error={codeError}
-                  keyboardType="numeric"
-                  editable={!isLoadingRegister}
+                  placeholder="6位数字验证码"
+                  value={formState.verificationCode}
+                  onChangeText={(text) => dispatch({ type: 'SET_VERIFICATION_CODE', payload: text })}
+                  error={errors.verificationCode}
+                  leftIconName="key-outline"
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  editable={!isLoading}
                 />
               </View>
-              <CountdownButton
+              <TouchableOpacity
+                style={[
+                  styles.codeButton,
+                  (countdown > 0 || isSendingCode || !formState.email || errors.email) &&
+                    styles.codeButtonDisabled,
+                ]}
                 onPress={handleSendCode}
-                disabled={countdown > 0 || isLoadingSend || isLoadingRegister}
-                countdown={countdown}
-                style={styles.countdownButton}
-              />
+                disabled={countdown > 0 || isSendingCode || !formState.email || !!errors.email}
+              >
+                {isSendingCode ? (
+                  <Text style={styles.codeButtonText}>发送中...</Text>
+                ) : countdown > 0 ? (
+                  <Text style={styles.codeButtonText}>{countdown}秒后重试</Text>
+                ) : (
+                  <Text style={styles.codeButtonText}>获取验证码</Text>
+                )}
+              </TouchableOpacity>
             </View>
 
+            {/* 协议勾选 */}
+            <TouchableOpacity
+              style={styles.agreementRow}
+              onPress={() => dispatch({ type: 'TOGGLE_AGREEMENT' })}
+              disabled={isLoading}
+            >
+              <Ionicons
+                name={formState.isAgreed ? 'checkbox' : 'square-outline'}
+                size={24}
+                color={formState.isAgreed ? '#3B82F6' : '#6B7280'}
+              />
+              <Text style={styles.agreementText}>
+                我已阅读并同意
+                <Text style={styles.linkText} onPress={() => Alert.alert('协议', '协议详情页待实现')}>
+                  《H Wallet服务协议》
+                </Text>
+              </Text>
+            </TouchableOpacity>
+
+            {/* 注册按钮 */}
             <PrimaryButton
               title="注册"
               onPress={handleRegister}
-              disabled={isLoadingRegister || !email || !code}
-              loading={isLoadingRegister}
+              disabled={isRegisterDisabled}
+              loading={isLoading}
               style={styles.registerButton}
             />
           </View>
-          {/* 底部填充，用于键盘弹起时 */}
-          <View style={styles.bottomSpacer} />
+
+          {/* 登录提示 */}
+          <View style={styles.loginPrompt}>
+            <Text style={styles.promptText}>已有账户？</Text>
+            <TouchableOpacity onPress={() => router.push('/login')}>
+              <Text style={styles.loginLink}>立即登录</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -178,51 +352,94 @@ const RegisterScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#FFFFFF',
   },
-  keyboardView: {
+  container: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: 32, // 4 units
+    paddingVertical: 24, // 3 units
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: spacing.screenPadding,
-    paddingTop: spacing.xxl,
-  },
-  logoPlaceholder: {
+  header: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  logoText: {
-    ...typography.h1,
-    color: colors.primary,
+    marginBottom: 48, // 6 units
   },
   title: {
-    ...typography.h2,
-    color: colors.textPrimary,
-    marginBottom: spacing.xl,
+    fontSize: 32, // H1
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 16, // 2 units
+  },
+  subtitle: {
+    fontSize: 16, // Body
+    color: '#6B7280',
+    marginTop: 8, // 1 unit
+  },
+  form: {
+    marginBottom: 32, // 4 units
   },
   codeRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: spacing.lg,
+    alignItems: 'flex-end',
+    marginBottom: 24, // 3 units
   },
-  codeInputContainer: {
+  codeInput: {
     flex: 1,
-    marginRight: spacing.md,
+    marginRight: 12,
   },
-  countdownButton: {
-    marginTop: spacing.md + spacing.sm, // 对齐输入框标签高度
+  codeButton: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 120,
+  },
+  codeButtonDisabled: {
+    backgroundColor: '#E5E7EB',
+  },
+  codeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  agreementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 32, // 4 units
+  },
+  agreementText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginLeft: 12,
+    flex: 1,
+  },
+  linkText: {
+    color: '#3B82F6',
   },
   registerButton: {
-    marginTop: spacing.lg,
+    width: '100%',
   },
-  bottomSpacer: {
-    height: 100,
+  loginPrompt: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24, // 3 units
+  },
+  promptText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  loginLink: {
+    fontSize: 14,
+    color: '#3B82F6',
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
 
