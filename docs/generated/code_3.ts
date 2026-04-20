@@ -1,6 +1,5 @@
-interface PrimaryButtonProps {
-      title: string;
-      onPress: () => void;
-      disabled?: boolean;
-      loading?: boolean; // 显示加载指示器
+interface AgreementCheckboxProps {
+      isChecked: boolean;
+      onToggle: () => void;
+      onLinkPress: () => void; // 点击协议链接的回调
     }
