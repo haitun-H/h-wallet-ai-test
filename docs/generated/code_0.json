@@ -1,4 +1,3 @@
 {
-      "email": "string, 用户邮箱",
-      "password": "string, 用户密码（前端需使用 HTTPS + 非对称加密传输，此处为加密后的密文）"
-    }
+  "email": "string，必填，用户邮箱"
+}
