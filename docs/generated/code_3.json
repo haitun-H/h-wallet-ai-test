@@ -1,1 +1,10 @@
-{ "success": false, "error": "该邮箱已被注册" }
+{
+  "code”: 201,
+  “message”: “注册成功”，
+  “data”: {
+    “userId”: “string，系统用户ID”，
+    “token”: “string，JWT认证令牌”，
+    “walletAddress”: “string，系统为用户创建的OKX Agent钱包地址”，
+    “nickname”: “string，默认昵称（邮箱前缀）”
+  }
+}
