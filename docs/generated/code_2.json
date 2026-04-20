@@ -1,1 +1,6 @@
-{ "success": false, "error": "邮箱格式不正确" }
+{
+  "email": "string，必填",
+  "password": "string，必填，加密后的密码",
+  "verificationCode": "string，必填，6位数字",
+  "sid": "string，必填，来自发送验证码接口的响应"
+}
