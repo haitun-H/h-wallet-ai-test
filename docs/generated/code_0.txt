@@ -1,28 +1,19 @@
-RegisterScreen (View)
-├── SafeAreaView (确保内容在安全区内)
-├── ScrollView (可滚动容器)
-│   ├── View (内容容器)
-│   │   ├── Logo/AppName (Text) - 可选
-│   │   ├── Title (Text) - “创建 H Wallet 账户”
-│   │   ├── EmailInput (自定义组件)
-│   │   │   ├── InputLabel (Text) - “邮箱地址”
-│   │   │   ├── TextInput
-│   │   │   └── ErrorText (Text) - 邮箱验证错误信息
-│   │   ├── PasswordInput (自定义组件)
-│   │   │   ├── InputLabel (Text) - “密码”
-│   │   │   ├── TextInput (secureTextEntry)
-│   │   │   ├── ToggleVisibilityIcon (TouchableOpacity + Icon)
-│   │   │   └── ErrorText (Text) - 密码验证错误信息
-│   │   ├── ConfirmPasswordInput (自定义组件) - 结构与PasswordInput相同
-│   │   ├── TermsCheckbox (自定义组件)
-│   │   │   ├── TouchableOpacity
-│   │   │   │   ├── CheckboxIcon (View/自定义图标)
-│   │   │   │   └── TermsText (Text) - 包含可点击的“服务条款”
-│   │   │   └── ErrorText (Text) - 未勾选错误信息
-│   │   ├── RegisterButton (自定义组件)
-│   │   │   └── TouchableOpacity
-│   │   │       ├── ActivityIndicator (加载时显示)
-│   │   │       └── ButtonText (Text) - “注册” / “注册中...”
-│   │   └── LoginLink (TouchableOpacity)
-│   │       └── LinkText (Text) - “已有账户？去登录”
-│   └── KeyboardAvoidingView (可选，用于处理键盘遮挡)
+RegisterScreen (页面容器)
+├── SafeAreaView (安全区域)
+│   ├── ScrollView (可滚动内容区域，适配小屏)
+│   │   ├── LogoHeader (Logo与标题区域)
+│   │   │   ├── LogoImage
+│   │   │   └── TitleText
+│   │   ├── FormContainer (表单容器)
+│   │   │   ├── EmailInput (邮箱输入框)
+│   │   │   ├── PasswordInput (密码输入框)
+│   │   │   ├── ConfirmPasswordInput (确认密码输入框)
+│   │   │   ├── VerificationCodeInput (验证码输入框)
+│   │   │   │   ├── TextInput
+│   │   │   │   └── GetCodeButton (获取验证码按钮)
+│   │   │   ├── AgreementCheckbox (协议勾选框)
+│   │   │   └── RegisterButton (注册按钮)
+│   │   └── LoginPrompt (登录提示)
+│   │       ├── PromptText
+│   │       └── LoginLinkText
+│   └── KeyboardAvoidingView (键盘避让，iOS)
