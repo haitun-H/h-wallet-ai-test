@@ -1,49 +1,70 @@
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Base URL should be configured in .env file
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+// 从环境变量读取，开发时可在 app.json 或 .env 中配置
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
+const api = axios.create({
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// 可以在这里添加请求/响应拦截器，例如统一错误处理
+// 请求拦截器：可在此处添加token等
+api.interceptors.request.use(async (config) => {
+  // 示例：从AsyncStorage获取token
+  // const token = await AsyncStorage.getItem('userToken');
+  // if (token) {
+  //   config.headers.Authorization = `Bearer ${token}`;
+  // }
+  return config;
+});
 
-export interface SendVerificationResponse {
-  success: boolean;
+// 响应拦截器：处理通用错误
+api.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    // 统一处理网络错误或服务器错误
+    const message = error.response?.data?.message || '网络请求失败，请稍后重试';
+    return Promise.reject(new Error(message));
+  }
+);
+
+export interface SendCodeResponse {
+  code: number;
   message: string;
   data: {
-    expiresAt: string;
+    sid: string;
   };
 }
 
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  verificationCode: string;
+  sid: string;
+}
+
 export interface RegisterResponse {
-  success: boolean;
+  code: number;
   message: string;
   data: {
-    walletAddress: string;
     userId: string;
-    createdAt: string;
+    token: string;
+    walletAddress: string;
+    nickname: string;
   };
 }
 
 export const authService = {
-  sendVerificationCode: async (email: string): Promise<SendVerificationResponse> => {
-    const response = await apiClient.post<SendVerificationResponse>('/api/auth/send-verification', {
-      email,
-    });
-    return response.data;
+  // 发送验证码
+  sendVerificationCode: (email: string): Promise<SendCodeResponse> => {
+    return api.post('/api/v1/auth/send-verification-code', { email });
   },
 
-  register: async (email: string, code: string): Promise<RegisterResponse> => {
-    const response = await apiClient.post<RegisterResponse>('/api/auth/register', {
-      email,
-      code,
-    });
-    return response.data;
+  // 提交注册
+  register: (data: RegisterRequest): Promise<RegisterResponse> => {
+    return api.post('/api/v1/auth/register', data);
   },
 };
