@@ -1,0 +1,412 @@
+openapi: 3.1.0
+info:
+  title: H Wallet MVP API
+  description: |-
+    H Wallet MVP 核心 API 合约。
+    核心流程：邮箱注册 → 自动创建 OKX Agent Wallet → 登录。
+    此为唯一真相来源，前后端及所有 Agent 必须基于此合约开发。
+  version: 1.0.0-mvp
+servers:
+  - url: https://api.h-wallet.example.com/v1
+    description: 生产环境 (示例)
+  - url: http://localhost:8080/v1
+    description: 本地开发环境
+
+tags:
+  - name: Authentication
+    description: 用户认证相关接口
+  - name: Users
+    description: 用户管理相关接口
+  - name: Verification
+    description: 验证码相关接口
+  - name: Wallets
+    description: 钱包相关接口（内部/系统触发）
+
+paths:
+  /verification-codes:
+    post:
+      tags:
+        - Verification
+      operationId: sendVerificationCode
+      summary: 发送邮箱验证码
+      description: |-
+        向指定邮箱发送6位数字验证码，用于注册流程。
+        **幂等性**：60秒内对同一邮箱重复请求，将返回首次请求的结果（`verification_id`相同）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendVerificationCodeRequest'
+      responses:
+        '200':
+          description: 验证码发送成功（或已发送，仍在有效期内）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendVerificationCodeResponse'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: 请求过于频繁
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-priority: P0
+
+  /users:
+    post:
+      tags:
+        - Users
+      operationId: registerUser
+      summary: 注册新用户
+      description: |-
+        校验邮箱验证码并创建新用户。成功后，系统将**自动同步调用**创建钱包接口。
+        返回信息中包含自动创建的钱包地址。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterUserRequest'
+      responses:
+        '201':
+          description: 用户注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: 请求参数错误、验证码错误或过期、邮箱已注册等
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 服务器内部错误（包括钱包创建失败等）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-priority: P0
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      operationId: login
+      summary: 用户登录
+      description: 使用邮箱和密码登录，获取访问令牌。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: 邮箱或密码错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-priority: P0
+
+  /me:
+    get:
+      tags:
+        - Users
+      operationId: getCurrentUser
+      summary: 获取当前用户信息
+      description: 获取已登录用户的详细信息。
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功获取用户信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: 未授权或 Token 无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-priority: P1
+
+  /wallets:
+    post:
+      tags:
+        - Wallets
+      operationId: createWalletForUser
+      summary: (内部)为用户创建钱包
+      description: |-
+        **内部接口**，由注册流程或后台任务调用，为指定用户自动创建 OKX Agent Wallet。
+        MVP 阶段模拟实现，返回模拟地址。
+      security:
+        - InternalApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWalletRequest'
+      responses:
+        '201':
+          description: 钱包创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletResponse'
+        '400':
+          description: 请求参数错误，或用户已存在钱包
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 钱包服务内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      x-priority: P0
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 用户登录后获得的 JWT Token
+    InternalApiKey:
+      type: apiKey
+      in: header
+      name: X-Internal-Api-Key
+      description: 用于内部服务调用的 API Key
+
+  schemas:
+    SendVerificationCodeRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+          description: 用户邮箱地址
+      x-example:
+        email: user@example.com
+
+    SendVerificationCodeResponse:
+      type: object
+      properties:
+        verification_id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+          description: 验证码请求的唯一标识，用于关联后续注册请求（幂等性保证）
+        message:
+          type: string
+          example: 验证码已发送
+      x-example:
+        verification_id: 123e4567-e89b-12d3-a456-426614174000
+        message: 验证码已发送
+
+    RegisterUserRequest:
+      type: object
+      required:
+        - email
+        - verification_code
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+          description: 用户邮箱地址
+        verification_code:
+          type: string
+          pattern: '^[0-9]{6}$'
+          example: '123456'
+          description: 6位数字验证码
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: Password123
+          description: 用户密码，至少8位，需包含字母和数字
+      x-example:
+        email: user@example.com
+        verification_code: '123456'
+        password: Password123
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          format: password
+          example: Password123
+      x-example:
+        email: user@example.com
+        password: Password123
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+          description: JWT 访问令牌
+        token_type:
+          type: string
+          example: Bearer
+        user:
+          $ref: '#/components/schemas/UserProfile'
+      x-example:
+        access_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        token_type: Bearer
+        user:
+          user_id: user_123
+          email: user@example.com
+          wallet_address: 0x71C7656EC7ab88b098defB751B7401B5f6d8976F
+
+    UserProfile:
+      type: object
+      properties:
+        user_id:
+          type: string
+          example: user_123
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        wallet_address:
+          type: string
+          nullable: true
+          example: 0x71C7656EC7ab88b098defB751B7401B5f6d8976F
+          description: 用户关联的钱包地址，注册后由系统自动创建
+
+    UserResponse:
+      allOf:
+        - $ref: '#/components/schemas/UserProfile'
+        - type: object
+          properties:
+            created_at:
+              type: string
+              format: date-time
+              example: '2023-10-01T12:00:00Z'
+
+    CreateWalletRequest:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: string
+          example: user_123
+          description: 系统用户ID
+
+    WalletResponse:
+      type: object
+      properties:
+        wallet_id:
+          type: string
+          example: wallet_abc
+        address:
+          type: string
+          example: 0x71C7656EC7ab88b098defB751B7401B5f6d8976F
+          description: 钱包地址（MVP 阶段为模拟地址）
+        user_id:
+          type: string
+          example: user_123
+        status:
+          type: string
+          enum: [active, pending, failed]
+          example: active
+        created_at:
+          type: string
+          format: date-time
+          example: '2023-10-01T12:00:00Z'
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+        - request_id
+      properties:
+        code:
+          type: string
+          example: INVALID_VERIFICATION_CODE
+          description: 业务错误码
+        message:
+          type: string
+          example: 验证码错误或已过期
+          description: 人类可读的错误信息
+        request_id:
+          type: string
+          example: req_1234567890
+          description: 本次请求的唯一ID，用于日志追踪
+        details:
+          type: object
+          additionalProperties: true
+          description: 可选的错误详情
+      x-examples:
+        validation_error:
+          code: VALIDATION_ERROR
+          message: 请求参数校验失败
+          request_id: req_1234567890
+          details:
+            field: email
+            reason: 邮箱格式不正确
+        duplicate_email:
+          code: DUPLICATE_EMAIL
+          message: 该邮箱已被注册
+          request_id: req_9876543210
