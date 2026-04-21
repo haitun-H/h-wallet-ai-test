@@ -1,53 +1,57 @@
+/**
+ * 认证相关路由
+ * 包含用户注册、登录、刷新token等接口
+ */
+
 const express = require('express');
 const router = express.Router();
-const { body, validationResult } = require('express-validator');
+
+// 导入控制器
 const authController = require('../controllers/authController');
-const { authenticateToken } = require('../middleware/auth');
+
+// 导入中间件
+const authMiddleware = require('../middleware/authMiddleware');
 
 /**
- * @route POST /v1/auth/login
+ * @route POST /verification-codes
+ * @desc 发送邮箱验证码
+ * @access Public
+ */
+router.post('/verification-codes', authController.sendVerificationCode);
+
+/**
+ * @route POST /users
+ * @desc 用户注册
+ * @access Public
+ */
+router.post('/users', authController.registerUser);
+
+/**
+ * @route POST /auth/login
  * @desc 用户登录
  * @access Public
  */
-router.post('/login', [
-  body('email')
-    .isEmail()
-    .withMessage('邮箱格式错误')
-    .normalizeEmail(),
-  body('password')
-    .notEmpty()
-    .withMessage('密码不能为空')
-], (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      code: 'USER_001',
-      message: errors.array()[0].msg,
-      request_id: req.requestId
-    });
-  }
-  next();
-}, authController.login);
+router.post('/login', authController.login);
 
 /**
- * @route POST /v1/auth/refresh
+ * @route POST /auth/refresh
  * @desc 刷新访问令牌
  * @access Public
  */
-router.post('/refresh', [
-  body('refresh_token')
-    .notEmpty()
-    .withMessage('refresh_token不能为空')
-], (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      code: 'AUTH_002',
-      message: errors.array()[0].msg,
-      request_id: req.requestId
-    });
-  }
-  next();
-}, authController.refreshToken);
+router.post('/refresh', authController.refreshToken);
+
+/**
+ * @route GET /me
+ * @desc 获取当前用户信息
+ * @access Private
+ */
+router.get('/me', authMiddleware.verifyToken, authController.getCurrentUser);
+
+/**
+ * @route GET /wallets/status
+ * @desc 查询钱包创建状态
+ * @access Private
+ */
+router.get('/wallets/status', authMiddleware.verifyToken, authController.getWalletStatus);
 
 module.exports = router;
