@@ -1,18 +1,23 @@
 /**
- * API 服务模块
- * 基于 OpenAPI 3.1 合约定义的所有接口调用
+ * API 服务配置
+ * 基于 OpenAPI 3.1 合约定义
  */
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 
-// 基础响应类型
-export interface BaseResponse<T = any> {
-  success?: boolean;
-  message?: string;
-  request_id?: string;
+// 从环境变量获取 API 基础 URL，默认为本地开发服务器
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080/v1';
+
+// 定义 API 响应类型
+export interface ApiResponse<T = any> {
+  data: T;
+  status: number;
+  statusText: string;
+  headers: any;
+  config: AxiosRequestConfig;
 }
 
-// 错误响应类型
+// 定义错误响应类型
 export interface ErrorResponse {
   code: string;
   message: string;
@@ -20,19 +25,19 @@ export interface ErrorResponse {
   details?: any;
 }
 
-// 发送验证码请求
-export interface SendVerificationCodeRequest {
-  email: string;
-}
-
-// 发送验证码响应
-export interface SendVerificationCodeResponse extends BaseResponse {
+// 定义成功响应类型
+export interface SuccessResponse {
   success: boolean;
   message: string;
   request_id: string;
 }
 
-// 注册用户请求
+// 定义发送验证码请求类型
+export interface SendVerificationCodeRequest {
+  email: string;
+}
+
+// 定义注册用户请求类型
 export interface RegisterUserRequest {
   email: string;
   verification_code: string;
@@ -40,7 +45,18 @@ export interface RegisterUserRequest {
   confirm_password: string;
 }
 
-// 用户信息
+// 定义登录请求类型
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+// 定义刷新令牌请求类型
+export interface RefreshTokenRequest {
+  refresh_token: string;
+}
+
+// 定义用户资料类型
 export interface UserProfile {
   id: string;
   email: string;
@@ -50,18 +66,12 @@ export interface UserProfile {
   updated_at: string;
 }
 
-// 注册用户响应
-export interface RegisterUserResponse extends UserProfile {
-  message: string;
+// 定义用户响应类型（注册成功返回）
+export interface UserResponse extends UserProfile {
+  message?: string;
 }
 
-// 登录请求
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-// 登录响应
+// 定义登录响应类型
 export interface LoginResponse {
   user: UserProfile;
   access_token: string;
@@ -70,12 +80,7 @@ export interface LoginResponse {
   token_type: string;
 }
 
-// 刷新令牌请求
-export interface RefreshTokenRequest {
-  refresh_token: string;
-}
-
-// 刷新令牌响应
+// 定义刷新令牌响应类型
 export interface RefreshTokenResponse {
   access_token: string;
   refresh_token: string;
@@ -83,66 +88,74 @@ export interface RefreshTokenResponse {
   token_type: string;
 }
 
-// 钱包状态响应
+// 定义钱包状态响应类型
 export interface WalletStatusResponse {
   wallet_address: string | null;
   status: 'pending' | 'active' | 'failed';
   created_at: string;
   updated_at: string;
-  error_message: string | null;
+  error_message?: string | null;
 }
-
-// API 配置
-const API_CONFIG = {
-  BASE_URL: 'http://localhost:8080/v1', // 开发环境地址，可根据环境变量切换
-  TIMEOUT: 10000, // 10秒超时
-};
 
 // 创建 axios 实例
 const createApiInstance = (): AxiosInstance => {
   const instance = axios.create({
-    baseURL: API_CONFIG.BASE_URL,
-    timeout: API_CONFIG.TIMEOUT,
+    baseURL: API_BASE_URL,
+    timeout: 10000, // 10秒超时
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
   });
 
-  // 请求拦截器 - 添加认证 token
+  // 请求拦截器
   instance.interceptors.request.use(
     (config) => {
+      // 从本地存储获取 token
       const token = localStorage.getItem('access_token');
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      
+      // 添加请求 ID 到 headers（可选，后端可能会生成）
+      config.headers['X-Request-ID'] = `frontend_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      console.log(`发起请求: ${config.method?.toUpperCase()} ${config.url}`);
       return config;
     },
     (error) => {
-      console.error('请求拦截器错误:', error);
+      console.error('请求配置错误:', error);
       return Promise.reject(error);
     }
   );
 
-  // 响应拦截器 - 统一错误处理
+  // 响应拦截器
   instance.interceptors.response.use(
-    (response) => response,
+    (response) => {
+      console.log(`请求成功: ${response.config.url}`, response.status);
+      return response;
+    },
     (error) => {
       if (error.response) {
-        // 服务器返回错误状态码
-        const errorData: ErrorResponse = error.response.data;
-        console.error('API 错误响应:', {
-          code: errorData.code,
-          message: errorData.message,
-          request_id: errorData.request_id,
-          status: error.response.status,
-        });
+        // 服务器返回了错误状态码
+        const { status, data } = error.response;
+        console.error(`请求失败: ${error.config.url}`, status, data);
+        
+        // 处理特定错误状态码
+        if (status === 401) {
+          console.warn('认证失败，可能需要重新登录');
+          // 这里可以触发重新登录逻辑
+        } else if (status === 429) {
+          console.warn('请求过于频繁，请稍后再试');
+        }
       } else if (error.request) {
         // 请求已发出但没有收到响应
-        console.error('网络错误: 请求无响应', error.request);
+        console.error('网络错误，请检查网络连接:', error.message);
       } else {
         // 请求配置错误
         console.error('请求配置错误:', error.message);
       }
+      
       return Promise.reject(error);
     }
   );
@@ -150,74 +163,70 @@ const createApiInstance = (): AxiosInstance => {
   return instance;
 };
 
-// API 实例
+// 创建 API 实例
 const api = createApiInstance();
 
-/**
- * 验证码相关 API
- */
+// 验证码相关 API
 export const verificationApi = {
   /**
    * 发送邮箱验证码
+   * @param data 发送验证码请求数据
+   * @returns 成功响应
    */
-  sendVerificationCode: async (
-    data: SendVerificationCodeRequest
-  ): Promise<AxiosResponse<SendVerificationCodeResponse>> => {
-    return api.post<SendVerificationCodeResponse>('/verification-codes', data);
+  sendVerificationCode: async (data: SendVerificationCodeRequest): Promise<ApiResponse<SuccessResponse>> => {
+    return api.post('/verification-codes', data);
   },
 };
 
-/**
- * 用户相关 API
- */
+// 用户相关 API
 export const userApi = {
   /**
    * 用户注册
+   * @param data 注册请求数据
+   * @returns 用户响应
    */
-  register: async (
-    data: RegisterUserRequest
-  ): Promise<AxiosResponse<RegisterUserResponse>> => {
-    return api.post<RegisterUserResponse>('/users', data);
+  register: async (data: RegisterUserRequest): Promise<ApiResponse<UserResponse>> => {
+    return api.post('/users', data);
   },
 
   /**
    * 获取当前用户信息
+   * @returns 用户资料
    */
-  getCurrentUser: async (): Promise<AxiosResponse<UserProfile>> => {
-    return api.get<UserProfile>('/me');
+  getCurrentUser: async (): Promise<ApiResponse<UserProfile>> => {
+    return api.get('/me');
   },
 };
 
-/**
- * 认证相关 API
- */
+// 认证相关 API
 export const authApi = {
   /**
    * 用户登录
+   * @param data 登录请求数据
+   * @returns 登录响应
    */
-  login: async (data: LoginRequest): Promise<AxiosResponse<LoginResponse>> => {
-    return api.post<LoginResponse>('/auth/login', data);
+  login: async (data: LoginRequest): Promise<ApiResponse<LoginResponse>> => {
+    return api.post('/auth/login', data);
   },
 
   /**
    * 刷新访问令牌
+   * @param data 刷新令牌请求数据
+   * @returns 刷新令牌响应
    */
-  refreshToken: async (
-    data: RefreshTokenRequest
-  ): Promise<AxiosResponse<RefreshTokenResponse>> => {
-    return api.post<RefreshTokenResponse>('/auth/refresh', data);
+  refreshToken: async (data: RefreshTokenRequest): Promise<ApiResponse<RefreshTokenResponse>> => {
+    return api.post('/auth/refresh', data);
   },
 };
 
-/**
- * 钱包相关 API
- */
+// 钱包相关 API
 export const walletApi = {
   /**
    * 查询钱包创建状态
+   * @returns 钱包状态响应
    */
-  getWalletStatus: async (): Promise<AxiosResponse<WalletStatusResponse>> => {
-    return api.get<WalletStatusResponse>('/wallets/status');
+  getWalletStatus: async (): Promise<ApiResponse<WalletStatusResponse>> => {
+    return api.get('/wallets/status');
   },
 };
 
