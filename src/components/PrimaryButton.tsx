@@ -1,120 +1,156 @@
 /**
  * 主要按钮组件
- * 支持默认、加载、禁用状态，包含防重复点击处理
+ * 用于注册、登录等主要操作
  */
 
 import React from 'react';
 import {
   TouchableOpacity,
   Text,
-  ActivityIndicator,
   StyleSheet,
+  ActivityIndicator,
   ViewStyle,
   TextStyle,
   TouchableOpacityProps,
 } from 'react-native';
 
+// 按钮类型
+type ButtonVariant = 'primary' | 'success' | 'warning' | 'error';
+
+// 按钮大小
+type ButtonSize = 'small' | 'medium' | 'large';
+
+// 按钮属性接口
 interface PrimaryButtonProps extends TouchableOpacityProps {
   title: string;
+  onPress: () => void;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   loading?: boolean;
   disabled?: boolean;
-  variant?: 'primary' | 'success' | 'warning' | 'error';
   fullWidth?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
 }
 
+/**
+ * 主要按钮组件
+ */
 const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   title,
+  onPress,
+  variant = 'primary',
+  size = 'medium',
   loading = false,
   disabled = false,
-  variant = 'primary',
   fullWidth = false,
   style,
   textStyle,
-  onPress,
-  ...props
+  ...restProps
 }) => {
-  // 防重复点击处理
-  const handlePress = (event: any) => {
-    if (loading || disabled) {
-      return;
+  // 处理按钮点击
+  const handlePress = () => {
+    if (!loading && !disabled) {
+      onPress();
     }
+  };
+
+  // 获取按钮样式
+  const getButtonStyle = () => {
+    const baseStyle: ViewStyle = {
+      borderRadius: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+      flexDirection: 'row',
+    };
+
+    // 根据变体设置背景色
+    let backgroundColor = '#3B82F6'; // 主色 - 蓝色
+    if (variant === 'success') backgroundColor = '#10B981'; // 成功色 - 绿色
+    if (variant === 'warning') backgroundColor = '#F59E0B'; // 警告色 - 琥珀色
+    if (variant === 'error') backgroundColor = '#EF4444'; // 错误色 - 红色
+
+    // 根据大小设置内边距和高度
+    let paddingHorizontal = 24;
+    let paddingVertical = 12;
+    let height = 48;
     
-    if (onPress) {
-      onPress(event);
+    if (size === 'small') {
+      paddingHorizontal = 16;
+      paddingVertical = 8;
+      height = 36;
+    } else if (size === 'large') {
+      paddingHorizontal = 32;
+      paddingVertical = 16;
+      height = 56;
     }
-  };
-  
-  // 根据变体获取颜色
-  const getVariantColor = () => {
-    switch (variant) {
-      case 'success':
-        return '#10B981';
-      case 'warning':
-        return '#F59E0B';
-      case 'error':
-        return '#EF4444';
-      case 'primary':
-      default:
-        return '#3B82F6';
+
+    // 禁用状态
+    if (disabled || loading) {
+      backgroundColor = '#D1D5DB'; // 灰色
     }
+
+    // 宽度设置
+    const widthStyle = fullWidth ? { width: '100%' } : {};
+
+    return {
+      ...baseStyle,
+      backgroundColor,
+      paddingHorizontal,
+      paddingVertical,
+      height,
+      ...widthStyle,
+      ...style,
+    };
   };
-  
-  const backgroundColor = getVariantColor();
-  const isDisabled = loading || disabled;
-  
+
+  // 获取文本样式
+  const getTextStyle = () => {
+    const baseStyle: TextStyle = {
+      fontSize: 16,
+      fontWeight: '500',
+      color: '#FFFFFF',
+    };
+
+    // 根据大小调整字体大小
+    if (size === 'small') {
+      baseStyle.fontSize = 14;
+    } else if (size === 'large') {
+      baseStyle.fontSize = 18;
+    }
+
+    // 禁用状态
+    if (disabled || loading) {
+      baseStyle.color = '#9CA3AF'; // 浅灰色
+    }
+
+    return {
+      ...baseStyle,
+      ...textStyle,
+    };
+  };
+
   return (
     <TouchableOpacity
-      style={[
-        styles.button,
-        { backgroundColor },
-        fullWidth && styles.fullWidth,
-        isDisabled && styles.buttonDisabled,
-        style,
-      ]}
+      style={getButtonStyle()}
       onPress={handlePress}
-      disabled={isDisabled}
+      disabled={disabled || loading}
       activeOpacity={0.8}
-      {...props}
+      {...restProps}
     >
       {loading ? (
-        <ActivityIndicator color="#FFFFFF" size="small" />
-      ) : (
-        <Text style={[styles.buttonText, textStyle]}>
-          {title}
-        </Text>
-      )}
+        <ActivityIndicator size="small" color="#FFFFFF" style={styles.loader} />
+      ) : null}
+      <Text style={getTextStyle()}>
+        {loading ? '处理中...' : title}
+      </Text>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  button: {
-    height: 48,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  fullWidth: {
-    width: '100%',
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  loader: {
+    marginRight: 8,
   },
 });
 
