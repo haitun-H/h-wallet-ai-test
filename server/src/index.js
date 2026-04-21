@@ -1,22 +1,37 @@
-require('dotenv').config();
+/**
+ * H Wallet 服务器入口文件
+ * 启动 Express 服务器并配置中间件、路由
+ */
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const dotenv = require('dotenv');
+
+// 加载环境变量
+dotenv.config();
+
+// 导入自定义模块
 const logger = require('./utils/logger');
 const errorHandler = require('./middleware/errorHandler');
 
 // 导入路由
 const authRoutes = require('./routes/auth');
 
+// 创建 Express 应用
 const app = express();
 const PORT = process.env.PORT || 8080;
-const API_PREFIX = process.env.API_PREFIX || '/v1';
+const BASE_PATH = '/v1';
 
 // 安全中间件
 app.use(helmet());
+
+// CORS 配置
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? 'https://hwallet.com' : '*',
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://hwallet.com'] 
+    : ['http://localhost:3000'],
   credentials: true
 }));
 
@@ -30,38 +45,33 @@ app.use((req, res, next) => {
   req.requestId = requestId;
   
   logger.info('收到请求', {
-    requestId,
+    request_id: requestId,
     method: req.method,
-    url: req.url,
+    path: req.path,
     ip: req.ip,
-    userAgent: req.get('User-Agent')
+    user_agent: req.get('user-agent')
   });
   
-  // 将requestId添加到响应头
+  // 将 requestId 添加到响应头
   res.setHeader('X-Request-ID', requestId);
   next();
 });
 
-// 限流配置
-const limiter = rateLimit({
+// 速率限制
+const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15分钟
   max: 100, // 每个IP限制100个请求
   message: {
     code: 'COMMON_001',
     message: '请求过于频繁，请稍后再试',
-    request_id: 'system'
+    request_id: 'rate_limit'
   },
   standardHeaders: true,
   legacyHeaders: false
 });
-app.use(limiter);
 
-// 路由注册
-app.use(`${API_PREFIX}/auth`, authRoutes);
-app.use(`${API_PREFIX}/verification-codes`, require('./routes/verification'));
-app.use(`${API_PREFIX}/users`, require('./routes/users'));
-app.use(`${API_PREFIX}/wallets`, require('./routes/wallets'));
-app.use(`${API_PREFIX}/me`, require('./routes/me'));
+// 应用速率限制到所有API
+app.use(`${BASE_PATH}/`, apiLimiter);
 
 // 健康检查端点
 app.get('/health', (req, res) => {
@@ -72,12 +82,15 @@ app.get('/health', (req, res) => {
   });
 });
 
-// 404处理
-app.use('*', (req, res) => {
+// API 路由
+app.use(`${BASE_PATH}/auth`, authRoutes);
+
+// 404 处理
+app.use((req, res) => {
   logger.warn('路由未找到', {
-    requestId: req.requestId,
+    request_id: req.requestId,
     method: req.method,
-    url: req.originalUrl
+    path: req.path
   });
   
   res.status(404).json({
@@ -92,14 +105,36 @@ app.use(errorHandler);
 
 // 启动服务器
 app.listen(PORT, () => {
-  logger.info(`服务器启动成功`, {
+  logger.info('服务器启动成功', {
     port: PORT,
     environment: process.env.NODE_ENV,
-    apiPrefix: API_PREFIX
+    base_url: `${process.env.BASE_URL || `http://localhost:${PORT}`}${BASE_PATH}`
   });
   
   // 启动钱包创建任务处理器
-  require('./services/walletCreationService').start();
+  const okxWalletService = require('./services/okxWalletService');
+  okxWalletService.startWalletCreationProcessor();
+});
+
+// 优雅关闭
+process.on('SIGTERM', () => {
+  logger.info('收到 SIGTERM 信号，开始优雅关闭');
+  
+  // 停止钱包创建任务处理器
+  const okxWalletService = require('./services/okxWalletService');
+  okxWalletService.stopWalletCreationProcessor();
+  
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  logger.info('收到 SIGINT 信号，开始优雅关闭');
+  
+  // 停止钱包创建任务处理器
+  const okxWalletService = require('./services/okxWalletService');
+  okxWalletService.stopWalletCreationProcessor();
+  
+  process.exit(0);
 });
 
 module.exports = app;
